@@ -11,7 +11,7 @@ application database.
 
 In case you already have a Python web application it is recommended to directly
 integrate ReportBro into your existing app. Have look at the demo apps available for
-`Django <https://github.com/jobsta/albumapp-django.git>`_
+`Django <https://github.com/jobsta/albumapp-django.git>`_, 
 `Flask <https://github.com/jobsta/albumapp-flask.git>`_ and
 `web2py <https://github.com/jobsta/albumapp-web2py.git>`_.
 
