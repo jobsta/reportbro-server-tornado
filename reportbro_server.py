@@ -6,19 +6,22 @@
 # To store report templates you need an additional table and handle the request for saving.
 # For a complete demo have a look at the Album-App available for Django, Flask and web2py.
 
-import datetime, decimal, json, os, uuid
+from os import environ as env
+from reportbro import Report, ReportBroError
+from sqlalchemy import create_engine, select
+from sqlalchemy import func
+from sqlalchemy import Table, Column, BLOB, Boolean, DateTime, Integer, String, Text, MetaData
+from tornado.web import HTTPError
+import datetime
+import decimal
+import json
+import uuid
 import tornado.ioloop
 import tornado.web
-from tornado.web import HTTPError
-from sqlalchemy import create_engine, select
-from sqlalchemy import Table, Column, BLOB, Boolean, DateTime, Integer, String, Text, MetaData
-from sqlalchemy import func
-from reportbro import Report, ReportBroError
 
-SERVER_PORT = 8000
-SERVER_PATH = r"/reportbro/report/run"
-MAX_CACHE_SIZE = 500 * 1024 * 1024  # keep max. 500 MB of generated pdf files in sqlite db
-
+SERVER_PORT = env.get('REPORTBRO_SERVER_PORT', 8000)
+SERVER_PATH = env.get('REPORTBRO_SERVER_PATH', '/reportbro/report/run')
+MAX_CACHE_SIZE = int(env.get('REPORTBRO_MAX_CACHE_SIZE', 500 * 1024 * 1024))  # keep max. 500 MB of generated pdf files in sqlite db
 
 engine = create_engine('sqlite:///:memory:', echo=False)
 db_connection = engine.connect()
@@ -92,13 +95,15 @@ class MainHandler(tornado.web.RequestHandler):
 
             # delete old reports (older than 3 minutes) to avoid table getting too big
             self.db_connection.execute(report_request.delete().where(
-                    report_request.c.created_on < (now - datetime.timedelta(minutes=3))))
+                report_request.c.created_on < (now - datetime.timedelta(minutes=3)))
+            )
 
             total_size = self.db_connection.execute(select([func.sum(report_request.c.pdf_file_size)])).scalar()
             if total_size and total_size > MAX_CACHE_SIZE:
                 # delete all reports older than 10 seconds to reduce db size for cached pdf files
                 self.db_connection.execute(report_request.delete().where(
-                        report_request.c.created_on < (now - datetime.timedelta(seconds=10))))
+                    report_request.c.created_on < (now - datetime.timedelta(seconds=10)))
+                )
 
             report_file = report.generate_pdf()
 
