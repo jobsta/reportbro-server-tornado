@@ -11,7 +11,7 @@ application database.
 
 In case you already have a Python web application it is recommended to directly
 integrate ReportBro into your existing app. Have look at the demo apps available for
-`Django <https://github.com/jobsta/albumapp-django.git>`_, 
+`Django <https://github.com/jobsta/albumapp-django.git>`_,
 `Flask <https://github.com/jobsta/albumapp-flask.git>`_ and
 `web2py <https://github.com/jobsta/albumapp-web2py.git>`_.
 
@@ -75,3 +75,14 @@ Python Coding Style
 The `PEP 8 (Python Enhancement Proposal) <https://www.python.org/dev/peps/pep-0008/>`_
 standard is used which is the de-facto code style guide for Python. An easy-to-read version
 of PEP 8 can be found at https://pep8.org/
+
+Repository Fork Edits
+-------------------
+1. downloaded ReportBro Designer 2.0.0 and extracted dist folder of zip file into reportbro-designer-2.0.0
+  link:
+  https://www.reportbro.com/download/release/reportbro-designer-2.0.0.zip
+2. downloaded Open Sans and created best-support.css configuration using with google-webfonts-helper
+  links:
+  - configuration Best Support (click variants 300,regular,600,800 manually): https://google-webfonts-helper.herokuapp.com/api/fonts/open-sans?subsets=latin
+  - zip with fonts: https://google-webfonts-helper.herokuapp.com/api/fonts/open-sans?download=zip&subsets=latin&variants=300,regular,600,800
+3. edited reportbro.css to use local Open Sans instead of remote fonts.googleapis.com

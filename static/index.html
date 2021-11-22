@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8"/>
+    <meta name="application-name" content="ReportBro Designer"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0"/>
+
+    <title>ReportBro Designer</title>
+    <meta name="description" content="Open-source Python framework to create PDF documents. Visually design report templates and preview them directly in the browser.">
+
+    <link rel="icon" type="image/png" sizes="32x32"href="/favicon.png">
+    <link rel="stylesheet" href="reportbro-designer-2.0.0/reportbro.css"/>
+    <script src="reportbro-designer-2.0.0/ext/jquery.js"></script>
+    <script src="reportbro-designer-2.0.0/reportbro.min.js"></script>
+    <script type="text/javascript" defer>
+      $(document).ready(function() {
+        $("#reportbro").reportBro({
+          reportServerUrl: 'http://localhost/print'
+        });
+      });
+    </script>
+  </head>
+  <body>
+    <div id="reportbro"></div>
+  </body>
+</html>

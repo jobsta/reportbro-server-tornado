@@ -7,6 +7,7 @@
 # For a complete demo have a look at the Album-App available for Django, Flask and web2py.
 
 from os import environ as env
+from pathlib import Path
 from reportbro import Report, ReportBroError
 from sqlalchemy import create_engine, select
 from sqlalchemy import func
@@ -15,9 +16,11 @@ from tornado.web import HTTPError
 import datetime
 import decimal
 import json
-import uuid
 import tornado.ioloop
 import tornado.web
+import uuid
+
+BASE_DIR = Path(__file__).resolve().parent
 
 SERVER_PORT = env.get('REPORTBRO_SERVER_PORT', 8000)
 SERVER_PATH = env.get('REPORTBRO_SERVER_PATH', '/reportbro/report/run')
@@ -185,13 +188,21 @@ class MainHandler(tornado.web.RequestHandler):
             raise HTTPError(400, reason='error generating report')
 
 
+class IndexHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.redirect("/index.html")
+
+
 def make_app():
     return tornado.web.Application([
         (SERVER_PATH, MainHandler, dict(db_connection=db_connection)),
+        ('/?', IndexHandler),
+        ('/(.*)', tornado.web.StaticFileHandler, dict(path=BASE_DIR / 'static/'))
     ])
 
 
 if __name__ == "__main__":
+    print(f'Server started and listening {SERVER_PATH}:{SERVER_PORT}')
     app = make_app()
     app.listen(SERVER_PORT)
     tornado.ioloop.IOLoop.current().start()
