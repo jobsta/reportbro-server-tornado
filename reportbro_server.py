@@ -13,6 +13,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy import func
 from sqlalchemy import Table, Column, BLOB, Boolean, DateTime, Integer, String, Text, MetaData
 from tornado.web import HTTPError
+import logging
 import datetime
 import decimal
 import json
@@ -25,6 +26,8 @@ BASE_DIR = Path(__file__).resolve().parent
 SERVER_PORT = env.get('REPORTBRO_SERVER_PORT', 8000)
 SERVER_PATH = env.get('REPORTBRO_SERVER_PATH', '/reportbro/report/run')
 MAX_CACHE_SIZE = int(env.get('REPORTBRO_MAX_CACHE_SIZE', 500 * 1024 * 1024))  # keep max. 500 MB of generated pdf files in sqlite db
+
+logger = logging.getLogger('tornado.access')
 
 engine = create_engine('sqlite:///:memory:', echo=False)
 db_connection = engine.connect()
@@ -49,6 +52,11 @@ def jsonconverter(val):
         return '{date.year}-{date.month}-{date.day}'.format(date=val)
     if isinstance(val, decimal.Decimal):
         return str(val)
+
+
+def raise_bad_request(*, reason, exception=None, report_errors=None):
+    logger.warning(f'BAD REQUEST - "{reason}" - report_errors: {report_errors}', exc_info=exception)
+    raise HTTPError(400, reason=reason)
 
 
 class MainHandler(tornado.web.RequestHandler):
@@ -77,14 +85,14 @@ class MainHandler(tornado.web.RequestHandler):
         report_definition = json_data.get('report')
         output_format = json_data.get('outputFormat')
         if output_format not in ('pdf', 'xlsx'):
-            raise HTTPError(400, reason='outputFormat parameter missing or invalid')
+            raise_bad_request(reason=f'outputFormat parameter missing or invalid (output_format={output_format})')
         data = json_data.get('data')
         is_test_data = bool(json_data.get('isTestData'))
 
         try:
             report = Report(report_definition, data, is_test_data, additional_fonts=self.additional_fonts)
-        except Exception as e:
-            raise HTTPError(400, reason='failed to initialize report: ' + str(e))
+        except Exception as exception:
+            raise_bad_request(reason='failed to initialize report', exception=exception)
 
         if report.errors:
             # return list of errors in case report contains errors, e.g. duplicate parameters.
@@ -121,11 +129,13 @@ class MainHandler(tornado.web.RequestHandler):
                 pdf_file=report_file, pdf_file_size=len(report_file), created_on=now)
 
             self.write('key:' + key)
-        except ReportBroError as err:
+        except ReportBroError as exception:
             # in case an error occurs during report generation a ReportBroError exception is thrown
             # to stop processing. We return this error within a list so the error can be
             # processed by ReportBro Designer.
-            self.write(json.dumps(dict(errors=[err.error])))
+            logger.warning('Error handled by ReportBro Designer', exc_info=exception)
+            report_errors = dict(errors=[exception.error])
+            self.write(json.dumps((report_errors)))
             return
 
     def get(self):
@@ -140,7 +150,7 @@ class MainHandler(tornado.web.RequestHandler):
             # in an sqlite table during report preview with a PUT request
             row = self.db_connection.execute(select([report_request]).where(report_request.c.key == key)).fetchone()
             if not row:
-                raise HTTPError(400, reason='report not found (preview probably too old), update report preview and try again')
+                raise_bad_request(reason='report not found (preview probably too old), update report preview and try again')
             if output_format == 'pdf' and row['pdf_file']:
                 report_file = row['pdf_file']
             else:
@@ -149,7 +159,7 @@ class MainHandler(tornado.web.RequestHandler):
                 is_test_data = row['is_test_data']
                 report = Report(report_definition, data, is_test_data, additional_fonts=self.additional_fonts)
                 if report.errors:
-                    raise HTTPError(400, reason='error generating report')
+                    raise_bad_request(reason='error generating report', report_errors=report.errors)
         else:
             # in case there is a GET request without a key we expect all report data to be available.
             # this is NOT used by ReportBro Designer and only added for the sake of completeness.
@@ -158,10 +168,10 @@ class MainHandler(tornado.web.RequestHandler):
             data = json_data.get('data')
             is_test_data = bool(json_data.get('isTestData'))
             if not isinstance(report_definition, dict) or not isinstance(data, dict):
-                raise HTTPError(400, reason='report_definition or data missing')
+                raise_bad_request(reason='report_definition or data missing')
             report = Report(report_definition, data, is_test_data, additional_fonts=self.additional_fonts)
             if report.errors:
-                raise HTTPError(400, reason='error generating report')
+                raise_bad_request(reason='error generating report', report_errors=report.errors)
 
         try:
             # once we have the reportbro.Report instance we can generate
@@ -184,8 +194,9 @@ class MainHandler(tornado.web.RequestHandler):
                 self.set_header('Content-Disposition', 'inline; filename="{filename}"'.format(
                     filename='report-' + str(now) + '.xlsx'))
             self.write(report_file)
-        except ReportBroError:
-            raise HTTPError(400, reason='error generating report')
+        except ReportBroError as exception:
+            report_errors = dict(errors=[exception.error])
+            raise_bad_request(reason='error generating report', exception=exception, report_errors=report_errors)
 
 
 class IndexHandler(tornado.web.RequestHandler):
