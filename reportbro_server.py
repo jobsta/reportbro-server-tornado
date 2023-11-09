@@ -193,7 +193,7 @@ class MainHandler(tornado.web.RequestHandler):
                 self.set_header('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                 self.set_header('Content-Disposition', 'inline; filename="{filename}"'.format(
                     filename='report-' + str(now) + '.xlsx'))
-            self.write(report_file)
+            self.write(bytes(report_file))
         except ReportBroError as exception:
             report_errors = dict(errors=[exception.error])
             raise_bad_request(reason='error generating report', exception=exception, report_errors=report_errors)
